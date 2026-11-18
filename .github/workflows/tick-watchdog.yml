@@ -1,0 +1,30 @@
+name: tick-watchdog
+# Si el último tick tiene más de 30 min, el endpoint manda push y responde 503.
+on:
+  schedule:
+    - cron: "17,47 * * * *"
+  workflow_dispatch:
+jobs:
+  watchdog:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    permissions: {}
+    steps:
+      - name: Revisar el latido del tick
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          APP_URL: ${{ secrets.APP_URL }}
+        run: |
+          if [ -z "${APP_URL}" ] || [ -z "${CRON_SECRET}" ]; then echo "::error::Faltan APP_URL o CRON_SECRET"; exit 1; fi
+          tmp=$(mktemp)
+          code=$(curl -sS --retry 2 --retry-delay 10 --max-time 40 \
+            -o "$tmp" -w "%{http_code}" \
+            -H "Authorization: Bearer ${CRON_SECRET}" "${APP_URL%/}/api/paper/watchdog") || {
+            echo "::error::curl falló (HTTP ${code:-n/a})"
+            rm -f "$tmp"
+            exit 1
+          }
+          echo "http=$code"
+          rm -f "$tmp"
+          if [ "$code" != "200" ]; then echo "::error::HTTP $code"; exit 1; fi
+          echo OK
