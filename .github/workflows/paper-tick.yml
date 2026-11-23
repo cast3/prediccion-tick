@@ -3,6 +3,9 @@ on:
   schedule:
     # Desfasado 2 min del minuto 0: GitHub retrasa los cron en punto.
     - cron: "2-59/5 * * * *"
+    # Respaldo intercalado: GitHub suele ejecutar solo ~la mitad de los cron de 5 min
+    # (mediana ~10 min) y deja un hueco de 31–40 min alrededor de las 00:00 UTC.
+    - cron: "4-59/5 * * * *"
   workflow_dispatch:
 jobs:
   tick:
